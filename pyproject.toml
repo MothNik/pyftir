@@ -42,8 +42,7 @@ exclude = [
     "**/node_modules",
     "**/__pycache__",
     "**/.*",
-    "examples/",
-    "tests/reference_files/generate_hermfunc_references.py",
+    "examples/"
 ]
 
 [tool.ruff]
