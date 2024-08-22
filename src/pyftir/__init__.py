@@ -9,6 +9,8 @@ A Python package for Fourier Transform Spectroscopy in Python.
 
 import os as _os
 
+from .test_data import black_body_peak, black_body_spectrum  # noqa: F401
+
 # === Package Metadata ===
 
 _AUTHOR_FILE_PATH = _os.path.join(_os.path.dirname(__file__), "AUTHORS.txt")
