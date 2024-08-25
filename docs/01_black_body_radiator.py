@@ -44,7 +44,9 @@ temperatures = (
 black_body_peaks_specs = []
 
 # the blackbody radiation spectra are computed one by one and plotted
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(
+    figsize=(12, 8),
+)
 
 colors = plt.cm.copper(  # type: ignore
     np.linspace(

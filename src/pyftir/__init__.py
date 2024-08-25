@@ -9,7 +9,7 @@ A Python package for Fourier Transform Spectroscopy in Python.
 
 import os as _os
 
-from .test_data import black_body_peak, black_body_spectrum  # noqa: F401
+from .spectra_simulate import black_body_peak, black_body_spectrum  # noqa: F401
 
 # === Package Metadata ===
 

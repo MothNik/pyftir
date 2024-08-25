@@ -1,5 +1,5 @@
 """
-Mod :mod:`test_data.black_body`
+Mod :mod:`spectra_simulate.black_body`
 
 This module implements a Planck blackbody radiation function with the wavenumbers
 as the independent variable.
@@ -8,16 +8,16 @@ as the independent variable.
 
 # === Imports ===
 
-from typing import Any, Literal, Tuple, Union, overload
+from typing import Tuple, Union, overload
 
 import numpy as np
 
 from .._utils import (
     RealNumeric,
     RealNumericArrayLike,
-    get_checked_real_numeric,
     get_checked_real_numeric_1d_array_like,
 )
+from ._validated_conversion import TemperatureUnit, get_checked_temperature_kelvin
 
 # === Constants ===
 
@@ -34,69 +34,14 @@ _BOLTZMANN_CONSTANT = 1.380_649e-23
 _PEAK_WAVENUMBER_SLOPE = 2.821439372  # dimensionless
 
 
-# === Auxiliary Functions ===
-
-
-def _get_checked_kelvin_temperature(
-    temperature: Any,
-    temperature_unit: Literal["K", "k", "C", "c", "F", "f"],
-) -> float:
-    """
-    Checks the temperature and converts it to Kelvin if necessary.
-
-    """
-
-    # the temperature and temperature unit are checked
-    temperature = get_checked_real_numeric(value=temperature)
-    temperature_unit_internal = temperature_unit.lower()
-    if temperature_unit_internal not in {"k", "c", "f"}:
-        raise ValueError(
-            f"Expected temperature_unit to be one of 'K', 'k', 'C', 'c', 'F', 'f', but "
-            f"got {temperature_unit}."
-        )
-
-    # if required, the temperature is converted to Kelvin
-    if temperature_unit == "c":
-        temperature = _temperature_celsius_to_kelvin(temperature=temperature)
-    elif temperature_unit == "f":
-        temperature = _temperature_fahrenheit_to_kelvin(temperature=temperature)
-
-    # if the temperature is below absolute zero, an error is raised
-    if temperature < 0.0:
-        raise ValueError(
-            f"The temperature of {temperature} K is below absolute zero (0 K)."
-        )
-
-    return temperature
-
-
 # === Functions ===
-
-
-def _temperature_celsius_to_kelvin(temperature: RealNumeric) -> float:
-    """
-    Converts a temperature from °C to K.
-
-    """
-
-    return float(temperature) + 273.15
-
-
-def _temperature_fahrenheit_to_kelvin(temperature: RealNumeric) -> float:
-    """
-    Converts a temperature from °F to K.
-
-    """
-
-    celsius_temperature = (float(temperature) - 32.0) * (5.0 / 9.0)
-    return _temperature_celsius_to_kelvin(temperature=celsius_temperature)
 
 
 @overload
 def black_body_spectrum(
     wavenumbers: RealNumeric,
     temperature: RealNumeric,
-    temperature_unit: Literal["K", "k", "C", "c", "F", "f"] = "K",
+    temperature_unit: TemperatureUnit = "K",
 ) -> float: ...
 
 
@@ -104,14 +49,14 @@ def black_body_spectrum(
 def black_body_spectrum(
     wavenumbers: RealNumericArrayLike,
     temperature: RealNumeric,
-    temperature_unit: Literal["K", "k", "C", "c", "F", "f"] = "K",
+    temperature_unit: TemperatureUnit = "K",
 ) -> np.ndarray: ...
 
 
 def black_body_spectrum(
     wavenumbers: RealNumericArrayLike,
     temperature: RealNumeric,
-    temperature_unit: Literal["K", "k", "C", "c", "F", "f"] = "K",
+    temperature_unit: TemperatureUnit = "K",
 ) -> Union[float, np.ndarray]:
     """
     Computes the Planck blackbody radiation spectrum for a given temperature and
@@ -162,7 +107,7 @@ def black_body_spectrum(
     wavenumbers = get_checked_real_numeric_1d_array_like(value=wavenumbers)
 
     # then, the temperature is converted to Kelvin
-    temperature = _get_checked_kelvin_temperature(
+    temperature = get_checked_temperature_kelvin(
         temperature=temperature,
         temperature_unit=temperature_unit,
     )
@@ -197,7 +142,7 @@ def black_body_spectrum(
 
 def black_body_peak(
     temperature: RealNumeric,
-    temperature_unit: Literal["K", "k", "C", "c", "F", "f"] = "K",
+    temperature_unit: TemperatureUnit = "K",
 ) -> Tuple[float, float]:
     """
     Computes the wavenumber at which the Planck blackbody radiation spectrum peaks
@@ -242,7 +187,7 @@ def black_body_peak(
     # --- Input Validation ---
 
     # the temperature is converted to Kelvin
-    temperature = _get_checked_kelvin_temperature(
+    temperature = get_checked_temperature_kelvin(
         temperature=temperature,
         temperature_unit=temperature_unit,
     )
