@@ -72,11 +72,13 @@ def _convert_to_validated_type(
 
     # if the value is neither of the output type nor one of the allowed types, an error
     # is raised
-    allowed_types_names = f"{output_type}"[7:-1]  # removes the "<class ...>" part
-    allowed_types_names += ", "
-    allowed_types_names += ", ".join([f"{atp}"[7:-1] for atp in allowed_from_types])
+    # NOTE: the following slices [7:-1] removes the "<class ...>" part
+    allowed_types_names = f"{output_type}"[7:-1]
+    allowed_types_names += " / "
+    allowed_types_names += " / ".join([f"{atp}"[7:-1] for atp in allowed_from_types])
+    value_type = f"{type(value)}"[7:-1]
     raise TypeError(
-        f"Expected '{name}' to be of type {allowed_types_names}, got {type(value)}."
+        f"Expected '{name}' to be of type {allowed_types_names}, but got {value_type}."
     )
 
 
@@ -132,11 +134,11 @@ def _get_bound_validated_value(
     # the comparison operator, clip function, and message string are determined
     if bound_kind == "low":
         comparison_operator = operator.ge
-        comparison_str = "greater than or equal to"
+        comparison_str = ">="
         clipper = max
     else:
         comparison_operator = operator.le
-        comparison_str = "less than or equal to"
+        comparison_str = "<="
         clipper = min
 
     # the comparison is performed and an error is raised if it is not satisfied
@@ -195,6 +197,8 @@ def _get_validated_scalar(
         If ``value`` is not one of the allowed types.
     ValueError
         If ``value`` is not within the allowed range and ``clip`` is ``False``.
+    AssertionError
+        If ``min_value`` is greater than ``max_value`` (if both are not ``None``).
 
     """
 
@@ -206,6 +210,15 @@ def _get_validated_scalar(
         output_type=output_type,
         allowed_from_types=allowed_from_types,
     )
+
+    # if both bounds are provided, the minimum bound is checked to be less than the
+    # maximum bound
+    if min_value is not None and max_value is not None:
+        if min_value > max_value:
+            raise ValueError(
+                f"Expected 'min_value' for '{name}' to be <= 'max_value', but got "
+                f"'min_value' = {min_value} and 'max_value' = {max_value}."
+            )
 
     # afterwards, the value is checked to be within the allowed range and clipped if
     # necessary and enabled
@@ -313,7 +326,11 @@ def get_validated_real_numeric(
         value=value,
         name=name,
         output_type=float,
-        allowed_from_types=(int, np.integer, np.floating),
+        allowed_from_types=(
+            np.floating,
+            int,
+            np.integer,
+        ),
         min_value=min_value,
         max_value=max_value,
         clip=clip,
