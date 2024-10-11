@@ -356,6 +356,7 @@ def get_validated_real_numeric_1d_array_like(
         If ``value`` does not contain only real numeric values.
     ValueError
         If ``value`` is not a 1D Array-like.
+    ValueError
         If ``min_size <= value.size <= max_size`` is not fulfilled.
 
     """
