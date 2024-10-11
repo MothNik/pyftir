@@ -22,7 +22,7 @@ package-data = {"*" = ["AUTHORS.txt", "VERSION.txt"]}
 version = {file = "src/pyftir/VERSION.txt"}
 readme = {file = ["README.md"]}
 dependencies = {file = "requirements/base.txt"}
-optional-dependencies = {dev = {file = "requirements/dev.txt"}}
+optional-dependencies = {dev = {file = "requirements/dev.txt"}, fast = {file = "requirements/fast.txt"}}
 
 [tool.isort]
 profile = "black"
