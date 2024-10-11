@@ -15,7 +15,7 @@ import numpy as np
 from .._utils import (
     RealNumeric,
     RealNumericArrayLike,
-    get_checked_real_numeric_1d_array_like,
+    get_validated_real_numeric_1d_array_like,
 )
 from ._validated_conversion import TemperatureUnit, get_checked_temperature_kelvin
 
@@ -104,7 +104,10 @@ def black_body_spectrum(
     # --- Input Validation ---
 
     # the wavenumbers are checked and converted to a 1D NumPy array
-    wavenumbers = get_checked_real_numeric_1d_array_like(value=wavenumbers)
+    wavenumbers = get_validated_real_numeric_1d_array_like(
+        value=wavenumbers,
+        name="wavenumbers",
+    )
 
     # then, the temperature is converted to Kelvin
     temperature = get_checked_temperature_kelvin(

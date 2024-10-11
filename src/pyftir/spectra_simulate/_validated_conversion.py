@@ -16,7 +16,7 @@ to their target units.
 
 from typing import Any, Literal, Optional
 
-from .._utils import RealNumeric, get_checked_real_numeric
+from .._utils import RealNumeric, get_validated_real_numeric
 
 # === Constants ===
 
@@ -89,7 +89,10 @@ def get_checked_temperature_kelvin(
     """
 
     # the temperature and temperature unit are checked
-    temperature = get_checked_real_numeric(value=temperature)
+    temperature = get_validated_real_numeric(
+        value=temperature,
+        name="temperature",
+    )
     temperature_unit_internal = temperature_unit.lower()
     if temperature_unit_internal not in {"k", "c", "f"}:
         raise ValueError(
@@ -125,7 +128,10 @@ def get_checked_pressure_bar(
     """
 
     # the pressure and pressure unit are checked
-    pressure = get_checked_real_numeric(value=pressure)
+    pressure = get_validated_real_numeric(
+        value=pressure,
+        name="pressure",
+    )
     pressure_unit_internal = pressure_unit.lower()
     if pressure_unit_internal not in {"bar", "mbar", "hpa", "kpa", "atm"}:
         raise ValueError(
@@ -159,7 +165,10 @@ def get_validated_gas_mole_fraction(
     """
 
     # the mole fraction and mole fraction unit are checked
-    mole_fraction = get_checked_real_numeric(value=mole_fraction)
+    mole_fraction = get_validated_real_numeric(
+        value=mole_fraction,
+        name="mole_fraction",
+    )
     if mole_fraction_unit is not None:
         mole_fraction_unit_internal = mole_fraction_unit.lower()
     else:
@@ -195,7 +204,10 @@ def get_checked_path_length_centimeters(
     """
 
     # the pathlength and pathlength unit are checked
-    path_length = get_checked_real_numeric(value=path_length)
+    path_length = get_validated_real_numeric(
+        value=path_length,
+        name="path_length",
+    )
     pathlength_unit_internal = path_length_unit.lower()
     if pathlength_unit_internal not in {"m", "dm", "cm", "mm", "µm"}:
         raise ValueError(
