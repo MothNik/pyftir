@@ -80,8 +80,44 @@ def predict_autoregressive_one_side(
 # === Functions ===
 
 
+def arburg_slow(
+    xs: np.ndarray,
+    x_lens: np.ndarray,
+    order: int,
+) -> np.ndarray:
+    def get_x_matrix(x: np.ndarray, order: int) -> np.ndarray:
+        x_matrix = np.empty(shape=(x.size - order, order + 1), dtype=np.float64)
+        for iter_i in range(0, order + 1):
+            x_matrix[::, order - iter_i] = x[iter_i : x.size - order + iter_i]
+
+        return x_matrix
+
+    a = np.array([1.0])
+    for iter_ord in range(0, order):
+        mat_j = np.flip(np.eye(iter_ord + 2), axis=1)
+        r_matrix = np.zeros(shape=(iter_ord + 2, iter_ord + 2))
+        for iter_i, num_elements in enumerate(x_lens):
+            x = xs[iter_i, 0:num_elements]
+            x_matrix = get_x_matrix(x, iter_ord + 1)
+            r_matrix += mat_j @ x_matrix.T @ x_matrix @ mat_j + x_matrix.T @ x_matrix
+
+        k_reflect = -(
+            np.append(a, 0.0)
+            @ mat_j
+            @ r_matrix
+            @ np.append(a, 0.0)
+            / (np.append(a, 0.0) @ r_matrix @ np.append(a, 0.0))
+        )
+
+        a = np.append(a, 0.0) + k_reflect * np.flip(np.append(a, 0.0))
+        print(iter_ord, k_reflect, a.tolist())
+
+    return a
+
+
 def arburg_fast(
-    x: np.ndarray,
+    xs: np.ndarray,
+    x_lens: np.ndarray,
     order: int,
     tikhonov_lambda: float,
 ) -> np.ndarray:
@@ -92,8 +128,16 @@ def arburg_fast(
 
     Parameters
     ----------
-    x : :class:`numpy.ndarray` of shape (n,)
-        The real input signal for which the AR coefficients are to be computed.
+    xs : :class:`numpy.ndarray` of shape (m, max(n_i)) of dtype ``numpy.float64``
+        The real input signal segments for which the AR coefficients are to be computed.
+        Multiple segments are processed by stacking them row-wise in a 2D array whose
+        maximum column size is determined by the longest signal. The resulting
+        prediction vector will minimise the forward and backward prediction errors
+        over all segments combined.
+        See ``x_lens`` for the actual Array layout.
+    x_lens : :class:`numpy.ndarray` of shape (m,) of dtype ``numpy.int64``
+        The lengths of the individual input signal segments.
+        ``x_lens[i]`` gives the number of usable elements in ``xs[i, ::]``.
     order : :class:`int`
         The order of the autoregressive model.
     tikhonov_lambda : :class:`float`
@@ -112,26 +156,35 @@ def arburg_fast(
 
     References
     ----------
-    The implementation is based on the pseudo-code provided in [1]_.
+    The implementation is based on the pseudo-code provided in [1]_ and extended to
+    a segmented version using the idea described in [2]_.
 
     .. [1] Vos K., A Fast Implementation of Burg's Method (2013)
+    .. [2] De Waele S., Broersen P.M.T, The Burg Algorithm for Segments, IEEE
+       Transactions on Signal Processing (2000), 48(10), pp. 2876-2880,
+       DOI: 10.1109/78.869039
 
     """
 
-    # first, the autocorrelation vector c would be initialised, but it it more efficient
-    # to initialise the auxiliary vector r with 2 times the autocorrelation values
-    # because it has to be updated with a new autocorrelation value in each iteration
-    # anyway
-    last_index = x.size - 1
-    r_auxiliary = np.empty(shape=(order + 1))
-    for iter_i in range(0, order + 1):
-        r_auxiliary[order - iter_i] = 2.0 * np.sum(x[iter_i:] * x[: x.size - iter_i])
-    r_view = r_auxiliary[order - 1 : order]
+    # first, the autocorrelation vectors c would be initialised, but it is more
+    # efficient to initialise the auxiliary vectors r with 2 times the autocorrelation
+    # values because it has to be updated with a new autocorrelation values in each
+    # iteration anyway
+    num_segments = x_lens.size
+    r_auxiliary = np.zeros(shape=(order + 1, num_segments))
+    for iter_i, num_elements in enumerate(x_lens):
+        x = xs[iter_i, 0:num_elements]
+        for iter_j in range(0, order + 1):
+            r_auxiliary[order - iter_j, iter_i] = 2.0 * np.sum(
+                x[iter_j:] * x[: num_elements - iter_j]
+            )
+
+    r_view = r_auxiliary[order - 1 : order, ::]
 
     # the penalty is applied if necessary by adding the regularisation parameter to the
-    # zero-lag autocorrelation value
+    # zero-lag autocorrelation values
     if tikhonov_lambda > 0.0:
-        r_auxiliary[order] += tikhonov_lambda
+        r_auxiliary[order, ::] += tikhonov_lambda
 
     # then, the reflection and prediction coefficient vectors are initialised ...
     a_prediction = np.zeros(shape=(order + 1))
@@ -139,51 +192,66 @@ def arburg_fast(
     a_view = a_prediction[0:1]
 
     # ... followed by the auxiliary vector g
-    g_auxiliary = np.empty(shape=(order + 1))
+    g_auxiliary = np.zeros(shape=(order + 1))
     g_view = g_auxiliary[0:2]
-    g_view[0] = r_auxiliary[order] - np.square(x[0]) - np.square(x[last_index])
-    g_view[1] = r_auxiliary[order - 1]
+    for iter_i, num_elements in enumerate(x_lens):
+        g_view[0] += (
+            r_auxiliary[order, iter_i]
+            - np.square(xs[iter_i, 0])
+            - np.square(xs[iter_i, num_elements - 1])
+        )
+        g_view[1] += r_auxiliary[order - 1, iter_i]
 
     # the loop for the main recursion is entered
-    for iter_i in range(0, order - 1):
+    iter_ord = 0
+    for iter_ord in range(0, order - 1):
         # the new reflection coefficient is computed
-        k_reflection = -np.sum(a_view * np.flip(g_view)[0 : 1 + iter_i]) / np.sum(
-            a_view * g_view[0 : 1 + iter_i]
+        k_reflection = -np.sum(a_view * np.flip(g_view)[0 : 1 + iter_ord]) / np.sum(
+            a_view * g_view[0 : 1 + iter_ord]
         )
 
         # then, the Levinson-Durbin recursion is applied to update the prediction
         # coefficients
-        a_view = a_prediction[0 : 2 + iter_i]
-        a_view[1 : 1 + iter_i] += k_reflection * np.flip(a_view[1 : 1 + iter_i])
-        a_view[1 + iter_i] = k_reflection
+        a_view = a_prediction[0 : 2 + iter_ord]
+        a_view[1 : 1 + iter_ord] += k_reflection * np.flip(a_view[1 : 1 + iter_ord])
+        a_view[1 + iter_ord] = k_reflection
 
-        # after that, the auxiliary vector r is updated
-        r_view -= (x[0 : 1 + iter_i] * x[1 + iter_i]) + np.flip(
-            x[last_index - iter_i : :]
-        ) * x[last_index - 1 - iter_i]
-        r_view = r_auxiliary[order - 2 - iter_i : order]
+        # after that, the auxiliary vectors r and the auxiliary products ΔR @
+        # are updated for each segment before they will be summed up in the auxiliary
+        # vector g
+        g_view += k_reflection * np.flip(g_view)
+        r_view_new = r_auxiliary[order - 2 - iter_ord : order, ::]
+        for iter_i, num_elements in enumerate(x_lens):
+            # the vectors r are updated
+            x = xs[iter_i, 0:num_elements]
+            r_view[::, iter_i] -= (x[0 : 1 + iter_ord] * x[1 + iter_ord]) + np.flip(
+                x[num_elements - 1 - iter_ord : :]
+            ) * x[num_elements - 2 - iter_ord]
 
-        # the auxiliary product ΔR @ a is computed
-        # ΔR is a rank-1 matrix, but it is more efficient to compute the individual
-        # vector-vector products
-        x_view = np.flip(x[0 : 2 + iter_i])
-        delta_r_dot_a = -x_view * np.sum(x_view * a_view)
-        x_view = x[last_index - 1 - iter_i : :]
-        delta_r_dot_a -= x_view * np.sum(x_view * a_view)
+            # the products ΔR @ are computed
+            # ΔR is a rank-1 matrix, but it is more efficient to compute the individual
+            # vector-vector products
+            x_view = np.flip(x[0 : 2 + iter_ord])
+            delta_r_dot_a = -x_view * np.sum(x_view * a_view)
+            x_view = x[num_elements - 2 - iter_ord : :]
+            delta_r_dot_a -= x_view * np.sum(x_view * a_view)
 
-        # finally, the auxiliary vector g is updated
-        g_view += k_reflection * np.flip(g_view) + delta_r_dot_a
-        g_auxiliary[2 + iter_i] = np.sum(r_view * a_view)
-        g_view = g_auxiliary[0 : 3 + iter_i]
+            # the auxiliary vector g is updated
+            g_view += delta_r_dot_a
+            g_auxiliary[2 + iter_ord] += np.sum(r_view_new[::, iter_i] * a_view)
+
+        # the views of the auxiliary vectors are updated
+        r_view = r_view_new
+        g_view = g_auxiliary[0 : 3 + iter_ord]
 
     # the last update of the reflection and prediction coefficients is performed
-    iter_i += 1
-    k_reflection = -np.sum(a_view * np.flip(g_view)[0 : 1 + iter_i]) / np.sum(
-        a_view * g_view[0 : 1 + iter_i]
+    iter_ord += 1
+    k_reflection = -np.sum(a_view * np.flip(g_view)[0 : 1 + iter_ord]) / np.sum(
+        a_view * g_view[0 : 1 + iter_ord]
     )
-    a_view = a_prediction[0 : 2 + iter_i]
-    a_view[1 : 1 + iter_i] += k_reflection * np.flip(a_view[1 : 1 + iter_i])
-    a_view[1 + iter_i] = k_reflection
+    a_view = a_prediction[0 : 2 + iter_ord]
+    a_view[1 : 1 + iter_ord] += k_reflection * np.flip(a_view[1 : 1 + iter_ord])
+    a_view[1 + iter_ord] = k_reflection
 
     return a_prediction
 
@@ -235,3 +303,25 @@ def extrapolate_autoregressive(
             ),
         )
     )
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from scipy.signal import lfilter
+
+    # Set the random seed for reproducibility
+    np.random.seed(1)
+
+    # Define the filter coefficients
+    A = [1, -2.7607, 3.8106, -2.6535, 0.9238, 1.11111]
+
+    # Generate random noise
+    noise = 0.2 * np.random.rand(1024)
+    print(noise)
+
+    # Apply the filter
+    y = lfilter(1, A, noise)
+
+    # Now, `y` contains the filtered output
+    print(arburg_slow(y[np.newaxis, ::], np.array([y.size]), 5))
+    print(arburg_fast(y[np.newaxis, ::], np.array([y.size]), 5, 0.0))

@@ -38,7 +38,6 @@ from ._numpy_base import extrapolate_autoregressive as numpy_extrapolate_autoreg
 
 # === Functions ===
 
-
 def arburg(
     x: ArrayLike,
     order: Integer = 1,
