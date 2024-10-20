@@ -19,11 +19,11 @@ __all__ = [
 
 # === Imports ===
 
-from typing import Optional, Tuple
+from typing import List, Optional, Set, Tuple, Union
 from warnings import warn
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from ..._utils import (
     Integer,
@@ -36,15 +36,73 @@ from ._numba_base import numba_arburg_fast, numba_extrapolate_autoregressive
 from ._numpy_base import arburg_fast as numpy_arburg_fast
 from ._numpy_base import extrapolate_autoregressive as numpy_extrapolate_autoregressive
 
+# === Auxiliary Functions ===
+
+
+def _prepare_x_segments_for_ar_fit(
+    xs: Union[ArrayLike, List[ArrayLike], Tuple[ArrayLike, ...], Set[ArrayLike]]
+) -> Tuple[NDArray[np.float64], NDArray[np.int64]]:
+    """
+    Prepares the input signal segments for the autoregressive model estimation by
+
+    - validating them
+    - stacking them row-wise into a 2D-Array,
+    - determining the lengths of the segments
+
+    Parameters
+    ----------
+    xs : Array-like of shape (n,) or Iterable of Array-like of shape (n_i,)
+        The real input signal (segments) for which the AR coefficients are to be
+        computed.
+        For details, see the docstring of, e.g., :func:`arburg`.
+
+    Returns
+    -------
+    xs_packaged : :class:`numpy.ndarray` of shape (len(xs), max(len(xs[i]))) of dtype :class:`numpy.float64`
+        The segments stacked row-wise into a 2D-Array. Its ``i``-th row corresponds to
+        ``xs[i]`` with the remaining elements padded to ``max(len(xs[i]))`` with
+        arbitrary values (``numpy.empty`` initialisation).
+    x_lens : :class:`numpy.ndarray` of shape (len(xs),) of dtype :class:`numpy.int64`
+        The lengths of the segments. Its ``i``-th element corresponds to ``len(xs[i])``.
+
+    """  # noqa: E501
+
+    if not isinstance(xs, (list, tuple, set)):
+        xs = (xs,)
+
+    xs = tuple(
+        get_validated_real_numeric_1d_array_like(
+            value=x,
+            name=f"xs[{index}]",
+            min_size=2,
+            max_size=None,
+            output_dtype=np.float64,
+        )
+        for index, x in enumerate(xs)
+    )
+
+    x_lens = np.array([x.size for x in xs], dtype=np.int64)
+
+    # the segments are stacked row-wise into a (partially empty) 2D-Array
+    xs_packaged = np.empty(
+        shape=(len(xs), np.max(x_lens)),
+        dtype=np.float64,
+    )
+    for index, x in enumerate(xs):
+        xs_packaged[index, 0 : x_lens[index]] = x
+
+    return xs_packaged, x_lens
+
+
 # === Functions ===
 
 
 def arburg(
-    x: ArrayLike,
+    xs: Union[ArrayLike, List[ArrayLike], Tuple[ArrayLike, ...], Set[ArrayLike]],
     order: Integer = 1,
     tikhonov_lambda: Optional[RealNumeric] = None,
     jit: bool = True,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """
     Computes the AR coefficients for an autoregressive model using a fast implementation
     of Burg's method that relies on an implicit matrix formulation that even allows for
@@ -52,13 +110,19 @@ def arburg(
 
     Parameters
     ----------
-    x : Array-like of shape (n,)
-        The real input signal for which the AR coefficients are to be computed.
-        Its data type is internally promoted to ``numpy.float64``.
-        It has to hold at least ``2`` elements.
+    xs : Array-like of shape (n,) or Iterable of Array-like of shape (n_i,)
+        The real input signal (segments) for which the AR coefficients are to be
+        computed.
+        If multiple segments are provided, they are treated as individual segments of
+        a single signal and the resulting AR model will minimise the forward and
+        backward prediction errors over all segments combined. However, this does not
+        mean that the AR model is fitted to the concatenated signal, i.e., no forward
+        or backward prediction is performed across the segments.
+        Its/their data type is internally promoted to ``numpy.float64``.
+        Each of them must hold at least ``2`` elements.
     order : :class:`int`, default=``1``
         The order of the autoregressive model.
-        It has to be within the range ``[1, len(x) - 1]``.
+        It has to be within the range ``[1, min(len(xs[i]) - 1)]`` for all ``xs[i]``.
     tikhonov_lambda : :class:`float` or :class:`int` or ``None``, default=``None``
         The Tikhonov regularisation parameter lambda. It has to be non-negative
         (``lam >= 0.0``) and if ``> 0.0``, it will result in Tikhonov regularisation.
@@ -73,7 +137,7 @@ def arburg(
 
     Returns
     -------
-    a_prediction : :class:`numpy.ndarray` of shape (order  + 1,)
+    a_prediction : :class:`numpy.ndarray` of shape (order  + 1,) of dtype :class:`numpy.float64`
         The AR coefficients of the autoregressive model.
         To be consistent with Matlab's ``arburg`` function, the zero-lag coefficient is
         included in the output as the first element ``a_prediction[0]`` which is always
@@ -82,34 +146,34 @@ def arburg(
     Raises
     ------
     TypeError
-        If ``x``, ``order``, or ``tikhonov_lambda`` are not of the expected type.
+        If ``xs``, ``order``, or ``tikhonov_lambda`` are not of the expected type.
     ValueError
-        If ``x`` is not a 1D Array-like or not of expected size.
+        If ``xs``is not a real numeric 1D Array-like or iterable of real numeric 1D
+        Array-likes with the expected size.
     ValueError
         If ``order`` is not within the allowed range.
 
     References
     ----------
-    The implementation is based on the pseudo-code provided in [1]_.
+    The implementation is based on the pseudo-code provided in [1]_ and extended to
+    a segmented version using the idea described in [2]_.
 
     .. [1] Vos K., A Fast Implementation of Burg's Method (2013)
+    .. [2] De Waele S., Broersen P.M.T, The Burg Algorithm for Segments, IEEE
+       Transactions on Signal Processing (2000), 48(10), pp. 2876-2880,
+       DOI: 10.1109/78.869039
 
-    """
+    """  # noqa: E501
 
     # --- Input Validation ---
 
-    x_internal = get_validated_real_numeric_1d_array_like(
-        value=x,
-        name="x",
-        min_size=2,
-        max_size=None,
-        output_dtype=np.float64,
-    )
+    xs, x_lens = _prepare_x_segments_for_ar_fit(xs=xs)
+
     order = get_validated_integer(
         value=order,
         name="order",
         min_value=1,
-        max_value=x_internal.size - 1,
+        max_value=int(np.min(x_lens) - 1),
     )
 
     tikhonov_lambda = get_validated_real_numeric(
@@ -123,7 +187,8 @@ def arburg(
     # implementation is used
     arburg_func = numba_arburg_fast if jit else numpy_arburg_fast
     return arburg_func(  # type: ignore
-        x=x_internal,  # type: ignore
+        xs=xs,  # type: ignore
+        x_lens=x_lens,  # type: ignore
         order=order,  # type: ignore
         tikhonov_lambda=tikhonov_lambda,  # type: ignore
     )

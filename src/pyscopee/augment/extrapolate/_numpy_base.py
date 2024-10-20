@@ -80,41 +80,6 @@ def predict_autoregressive_one_side(
 # === Functions ===
 
 
-def arburg_slow(
-    xs: np.ndarray,
-    x_lens: np.ndarray,
-    order: int,
-) -> np.ndarray:
-    def get_x_matrix(x: np.ndarray, order: int) -> np.ndarray:
-        x_matrix = np.empty(shape=(x.size - order, order + 1), dtype=np.float64)
-        for iter_i in range(0, order + 1):
-            x_matrix[::, order - iter_i] = x[iter_i : x.size - order + iter_i]
-
-        return x_matrix
-
-    a = np.array([1.0])
-    for iter_ord in range(0, order):
-        mat_j = np.flip(np.eye(iter_ord + 2), axis=1)
-        r_matrix = np.zeros(shape=(iter_ord + 2, iter_ord + 2))
-        for iter_i, num_elements in enumerate(x_lens):
-            x = xs[iter_i, 0:num_elements]
-            x_matrix = get_x_matrix(x, iter_ord + 1)
-            r_matrix += mat_j @ x_matrix.T @ x_matrix @ mat_j + x_matrix.T @ x_matrix
-
-        k_reflect = -(
-            np.append(a, 0.0)
-            @ mat_j
-            @ r_matrix
-            @ np.append(a, 0.0)
-            / (np.append(a, 0.0) @ r_matrix @ np.append(a, 0.0))
-        )
-
-        a = np.append(a, 0.0) + k_reflect * np.flip(np.append(a, 0.0))
-        print(iter_ord, k_reflect, a.tolist())
-
-    return a
-
-
 def arburg_fast(
     xs: np.ndarray,
     x_lens: np.ndarray,
@@ -303,25 +268,3 @@ def extrapolate_autoregressive(
             ),
         )
     )
-
-
-if __name__ == "__main__":
-    import numpy as np
-    from scipy.signal import lfilter
-
-    # Set the random seed for reproducibility
-    np.random.seed(1)
-
-    # Define the filter coefficients
-    A = [1, -2.7607, 3.8106, -2.6535, 0.9238, 1.11111]
-
-    # Generate random noise
-    noise = 0.2 * np.random.rand(1024)
-    print(noise)
-
-    # Apply the filter
-    y = lfilter(1, A, noise)
-
-    # Now, `y` contains the filtered output
-    print(arburg_slow(y[np.newaxis, ::], np.array([y.size]), 5))  # type: ignore
-    print(arburg_fast(y[np.newaxis, ::], np.array([y.size]), 5, 0.0))  # type: ignore
