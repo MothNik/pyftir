@@ -323,5 +323,5 @@ if __name__ == "__main__":
     y = lfilter(1, A, noise)
 
     # Now, `y` contains the filtered output
-    print(arburg_slow(y[np.newaxis, ::], np.array([y.size]), 5))
-    print(arburg_fast(y[np.newaxis, ::], np.array([y.size]), 5, 0.0))
+    print(arburg_slow(y[np.newaxis, ::], np.array([y.size]), 5))  # type: ignore
+    print(arburg_fast(y[np.newaxis, ::], np.array([y.size]), 5, 0.0))  # type: ignore

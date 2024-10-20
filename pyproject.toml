@@ -6,8 +6,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyftir"
-description = "Open Source Fourier Transform Spectroscopy with Python"
+name = "pyscopee"
+description = "Open Source Spectroscopy with Python"
 authors = [{name = "Niklas Zell", email = "nik.zoe@web.de"}]
 requires-python = ">=3.9"
 keywords = ["Fourier Transform", "Fourier Transform Spectroscopy", "FTIR", "Phase correction", "Mertz Correction", "Forman Method", "Superresolution", "NumPy"]
@@ -19,7 +19,7 @@ include-package-data = true
 package-data = {"*" = ["AUTHORS.txt", "VERSION.txt"]}
 
 [tool.setuptools.dynamic]
-version = {file = "src/pyftir/VERSION.txt"}
+version = {file = "src/pyscopee/VERSION.txt"}
 readme = {file = ["README.md"]}
 dependencies = {file = "requirements/base.txt"}
 optional-dependencies = {dev = {file = "requirements/dev.txt"}, fast = {file = "requirements/fast.txt"}}

@@ -1,5 +1,5 @@
 """
-This test suite implements all tests for the module :mod:`pyftir._utils.validate`.
+This test suite implements all tests for the module :mod:`pyscopee._utils.validate`.
 
 """
 
@@ -11,7 +11,7 @@ from typing import Any, Optional, Union
 import numpy as np
 import pytest
 
-from pyftir._utils import get_validated_integer, get_validated_real_numeric
+from pyscopee._utils import get_validated_integer, get_validated_real_numeric
 
 # === Tests ===
 

@@ -15,7 +15,7 @@ from enum import Enum
 
 # === Models ===
 
-# NOTE: the following code is copied from src/pyftir/_utils/numba_helpers.py
+# NOTE: the following code is copied from src/pyscopee/_utils/numba_helpers.py
 #       to avoid an import of the package before the environment variable is set
 
 # an Enum that specifies the possible actions that can be taken regarding Numba

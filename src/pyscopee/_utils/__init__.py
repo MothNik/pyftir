@@ -1,7 +1,7 @@
 """
 Mod :mod:`_utils`
 
-This module provides utilities used across the ``pyftir`` package.
+This module provides utilities used across the ``pyscopee`` package.
 
 """
 

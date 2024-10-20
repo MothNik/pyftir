@@ -1,5 +1,5 @@
 """
-This example script shows the blackbody radiation function implemented in ``pyftir``.
+This example script shows the blackbody radiation function implemented in ``pyscopee``.
 
 """
 
@@ -9,10 +9,9 @@ import os
 
 import numpy as np
 from matplotlib import pyplot as plt
+from pyscopee import black_body_peak, black_body_spectrum
 
-from pyftir import black_body_peak, black_body_spectrum
-
-plt.style.use(os.path.join(os.path.dirname(__file__), "./pyftir.mplstyle"))
+plt.style.use(os.path.join(os.path.dirname(__file__), "./pyscopee.mplstyle"))
 
 
 # === Constants ===
@@ -100,7 +99,7 @@ ax.set_ylabel(
 ax.set_xlim(wavenumbers.min(), wavenumbers.max())
 
 # the plot is saved ...
-if os.getenv("PYFTIR_DEVELOPER", "false").lower() == "true":
+if os.getenv("pyscopee_DEVELOPER", "false").lower() == "true":
     plt.savefig(os.path.join(os.path.dirname(__file__), PLOT_FILEPATH))
 
 # ... and shown

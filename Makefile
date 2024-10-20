@@ -87,9 +87,9 @@ test-parallel:
 .PHONY: test-htmlcov
 test-htmlcov:
 	@echo Running the tests with HTML coverage report ...
-	pytest --cov=pyftir ./tests -n="auto" --cov-report=html -x --no-jit
+	pytest --cov=pyscopee ./tests -n="auto" --cov-report=html -x --no-jit
 
 .PHONY: test-xmlcov
 test-xmlcov:
 	@echo Running the tests with XML coverage report ...
-	pytest --cov=pyftir ./tests -n="auto" --cov-report=xml -x --no-jit
+	pytest --cov=pyscopee ./tests -n="auto" --cov-report=xml -x --no-jit

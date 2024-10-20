@@ -10,7 +10,7 @@ numba>=0.55.0
 pandas>=2.2.0
 perfplot
 pycodestyle>=2.12.0
-pyright>=1.1.300
+pyright[nodejs]>=1.1.300
 pytest
 pytest-cov
 pytest-xdist

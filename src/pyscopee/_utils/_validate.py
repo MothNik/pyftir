@@ -1,7 +1,7 @@
 """
 Mod :mod:`_utils._validate`
 
-This module provides input validations used across the ``pyftir`` package.
+This module provides input validations used across the ``pyscopee`` package.
 
 """
 
@@ -227,7 +227,7 @@ def _get_validated_scalar(
             value=value,
             name=name,
             bound=bound,
-            bound_kind=bound_kind,
+            bound_kind=bound_kind,  # type: ignore
             clip=clip,
         )
 

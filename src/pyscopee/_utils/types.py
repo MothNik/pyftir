@@ -1,7 +1,7 @@
 """
 Mod :mod:`_utils.types`
 
-This module provides type definitions used across the ``pyftir`` package.
+This module provides type definitions used across the ``pyscopee`` package.
 
 """
 

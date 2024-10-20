@@ -15,14 +15,15 @@ import warnings
 from typing import Union, overload
 
 import numpy as np
+from numpy.typing import ArrayLike
 from scipy.interpolate import splev, splrep
 
-from src.pyftir._utils import (
+from .._utils import (
     RealNumeric,
     RealNumericArrayLike,
     get_validated_real_numeric_1d_array_like,
 )
-from src.pyftir.spectra_simulate._validated_conversion import (
+from ._validated_conversion import (
     GasConcentrationUnit,
     PathlengthUnit,
     PressureUnit,
@@ -56,7 +57,7 @@ def calc_atmospheric_transmittance(
 
 @overload
 def calc_atmospheric_transmittance(
-    wavenumbers: RealNumericArrayLike,
+    wavenumbers: ArrayLike,
     temperature: RealNumeric = 25.0,
     temperature_unit: TemperatureUnit = "C",
     pressure: RealNumeric = 1.0,

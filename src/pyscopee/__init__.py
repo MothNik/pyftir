@@ -1,7 +1,7 @@
 """
-Package ``pyftir``
+Package ``pyscopee``
 
-A Python package for Fourier Transform Spectroscopy in Python.
+A Python package for Spectroscopy in Python.
 
 """
 
