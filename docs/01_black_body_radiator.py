@@ -9,6 +9,7 @@ import os
 
 import numpy as np
 from matplotlib import pyplot as plt
+
 from pyscopee import black_body_peak, black_body_spectrum
 
 plt.style.use(os.path.join(os.path.dirname(__file__), "./pyscopee.mplstyle"))
@@ -16,7 +17,7 @@ plt.style.use(os.path.join(os.path.dirname(__file__), "./pyscopee.mplstyle"))
 
 # === Constants ===
 
-PLOT_FILEPATH = "./example_plots/01_black_body_radiator.svg"
+PLOT_FILEPATH = "./example_plots/01_black_body_radiator.png"
 
 # === Main ===
 
