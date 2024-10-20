@@ -216,8 +216,8 @@ def _get_validated_scalar(
     if min_value is not None and max_value is not None:
         if min_value > max_value:
             raise ValueError(
-                f"Expected 'min_value' for '{name}' to be <= 'max_value', but got "
-                f"'min_value' = {min_value} and 'max_value' = {max_value}."
+                f"Expected minimum value for '{name}' to be <= maximum value, but got "
+                f"min = {min_value} and max = {max_value}."
             )
 
     # afterwards, the value is checked to be within the allowed range and clipped if
